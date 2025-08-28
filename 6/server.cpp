@@ -35,16 +35,16 @@ int main() {
     ::unlink(SOCKET_PATH);
 
     listener = ::socket(AF_UNIX, SOCK_STREAM, 0);
-    if (listener < 0) { perror("socket"); return 1; }
+    if (listener < 0) { perror("socket"); exit(1); }
 
     local.sun_family = AF_UNIX;
     std::strncpy(local.sun_path, SOCKET_PATH, sizeof(local.sun_path) - 1);
 
     if (::bind(listener, reinterpret_cast<struct sockaddr*>(&local), sizeof(local)) < 0) {
-        perror("bind"); ::close(listener); return 1;
+        perror("bind"); ::close(listener); exit(1);
     }
     if (::listen(listener, 10) == -1) {
-        perror("listen"); ::close(listener); return 1;
+        perror("listen"); ::close(listener); exit(1);
     }
 
     FD_SET(listener, &master);
