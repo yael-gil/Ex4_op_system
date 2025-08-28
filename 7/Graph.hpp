@@ -5,7 +5,6 @@
 #include <vector>
 #include <iostream>
 
-
 class Graph
 {
     int V; // Number of vertices
@@ -28,14 +27,13 @@ class Graph
 
         bool isEulerian() const;
 
-        void findEulerCircuit(std::ostream& os) const;
-
-        const std::vector<std::vector<int>>& getAdjacency() const { return adj; }
-
-
+        void findEulerCircuit();
 
         
 };
+
+void DFS(int start_node, std::vector<bool>& visited, const Graph& graph);
+
 #endif
 
 /* bool Graph::isConnected() const {

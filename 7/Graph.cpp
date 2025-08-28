@@ -128,50 +128,55 @@ void DFS(int start_node, std::vector<bool>& visited, const Graph& graph);
             return true;
         }
 
-    void Graph::findEulerCircuit(std::ostream& os) const {
-    if (!isEulerian()) return;
+        void Graph::findEulerCircuit(){
+            
+            if (!Graph::isEulerian()) {
+                std::cout << "The graph is not Eulerian." << std::endl;
+                return;
+            }
 
-    // בודקים אם אין צלעות כלל — נדפיס מסלול ריק
-    long totalDeg = 0;
-    for (int i = 0; i < V; ++i) totalDeg += adj[i].size();
-    if (totalDeg == 0) {
-        os << "Eulerian Circuit: (empty)\n";
-        return;
-    }
+            std::vector<std::vector<int>> tempAdj = adj; // Create a copy of the adjacency list
+            std::vector<int> circuit; // To store the Eulerian circuit
+            std::vector<int> stack; // Stack to hold the current path
 
-    // נשתמש ב-Hierholzer על העתק השכנויות
-    std::vector<std::vector<int>> tempAdj = adj;
-    std::vector<int> circuit;
-    std::vector<int> st;
+            // Start from the first vertex with edges
+            int currVertex = 0;
+            for (int i = 0; i < V; ++i) {
+                if (degree(i) > 0) {
+                    currVertex = i;
+                    break;
+                }
+            }
 
-    int curr = 0;
-    for (int i = 0; i < V; ++i) if (degree(i) > 0) { curr = i; break; }
-    st.push_back(curr);
+            stack.push_back(currVertex);
 
-    while (!st.empty()) {
-        if (tempAdj[curr].empty()) {
-            circuit.push_back(curr);
-            curr = st.back();
-            st.pop_back();
-        } else {
-            st.push_back(curr);
-            int next = tempAdj[curr].back();
-            tempAdj[curr].pop_back();
-            auto &backList = tempAdj[next];
-            auto it = std::find(backList.begin(), backList.end(), curr);
-            if (it != backList.end()) backList.erase(it);
-            curr = next;
+            while (!stack.empty()) {
+                if (tempAdj[currVertex].empty()) {
+                    // If no more neighbors, add to circuit
+                    circuit.push_back(currVertex);
+                    currVertex = stack.back();
+                    stack.pop_back();
+                } else {
+                    // Otherwise, continue traversing
+                    stack.push_back(currVertex);
+                    int nextVertex = tempAdj[currVertex].back();
+                    // Remove the edge from the graph
+                    tempAdj[currVertex].pop_back();
+                    auto it = std::find(tempAdj[nextVertex].begin(), tempAdj[nextVertex].end(), currVertex);
+                    if (it != tempAdj[nextVertex].end()) {
+                        tempAdj[nextVertex].erase(it);
+                    }
+                    currVertex = nextVertex;
+                }
+            }
+
+            // Print the Eulerian circuit
+            std::cout << "Eulerian Circuit: ";
+            for (auto it = circuit.rbegin(); it != circuit.rend(); ++it) {
+                std::cout << *it << " ";
+            }
+            std::cout << std::endl;
         }
-    }
-
-    // הדפסה ל-os
-    os << "Eulerian Circuit: ";
-    for (auto it = circuit.rbegin(); it != circuit.rend(); ++it) {
-        os << *it;
-        if (it + 1 != circuit.rend()) os << " -> ";
-    }
-    os << "\n";
-}
 
 
 // Depth-First Search (DFS) helper function (not a member of Graph class)
