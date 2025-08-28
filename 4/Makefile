@@ -50,7 +50,13 @@ gcov_exec: $(OBJS)
 run_valgrind: $(TARGET)
 	valgrind --leak-check=full  ./$(TARGET) -v 5 -e 4 -s 44
 
+run_valgrind_callgrind: $(TARGET)
+	valgrind --tool=callgrind ./$(TARGET) -v 499 -e 124251 -s 1
+	callgrind_annotate callgrind.out.* > callgrind_report.txt 
+
+	
+
 # Clean target: removes all generated files
 clean:
 	rm -f $(OBJS) $(TARGET)
-	rm -f *.gcno *.gcda *.gcov
+	rm -f *.gcno *.gcda *.gcov *gmon.out callgrind.out.* 
