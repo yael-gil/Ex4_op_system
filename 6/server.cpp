@@ -21,18 +21,48 @@
 
 #include "Graph.hpp"
 
-static const char* SOCKET_PATH = "mysocket";
+static const char* SOCKET_PATH = "mysocket"; /*
+*/
 
 int main() {
-    fd_set master, read_fds;
-    int fdmax, listener, newfd;
-    struct sockaddr_un local{}, remote{};
-    socklen_t addrlen;
 
-    FD_ZERO(&master);
-    FD_ZERO(&read_fds);
+// fd_set:   (File Descriptors) מבנה ייחודי שמחזיק "קבוצת תיאורי קבצים ".
+// כל ביט במבנה מייצג האם מתבצע מעקב אחרי תיאור קובץ מסוים לקריאה או לכתיבה.
+//  select() משמש את הפונקציה  כדי לדעת איזה מהסוקטים מוכן לפעולה.
+fd_set master, read_fds;
 
-    ::unlink(SOCKET_PATH);
+// master → הקבוצה הקבועה שאנחנו עוקבים אחריה כל הזמן 
+// read_fds →  select() עותק זמני שנוצר בכל קריאה ל- 
+//, משום שהפונקציה משנה את התוכן של הקבוצה.
+int fdmax, listener, newfd;
+
+// fdmax → שומר את המספר הגבוה ביותר של תיאור קובץ (FD) שנמצא במעקב.
+// listener → סוקט ההאזנה הראשי של השרת, דרכו מגיעים חיבורים חדשים.
+// newfd → סוקט חדש שנוצר עבור כל חיבור נכנס לאחר הקריאה ל-accept().
+struct sockaddr_un local{}, remote{};
+
+// sockaddr_un -  UDS (Unix Domain Sockets) מבנה כתובת ייחודי לפרוטוקול .
+// מבנה זה מכיל:
+//    • sun_family  סוג הכתובת (AF_UNIX).
+//    • sun_path  הנתיב בקובץ הסוקט (לדוגמה: "mysocket").
+socklen_t addrlen;  
+// accept() משתנה זה משמש לשמירת אורך מבנה הכתובת שמועבר לקריאה ל
+
+
+  // FD_ZERO(&master):
+// מאפס (מנקה) את קבוצת הסוקטים הראשית (master).
+// פעולה זו מסמנת שכל תיאורי הקבצים (FDs) בקבוצה אינם במעקב כרגע.
+FD_ZERO(&master);
+
+// FD_ZERO(&read_fds):
+// מאפס (מנקה) גם את קבוצת הסוקטים הזמנית (read_fds),
+// שמשמשת כל קריאה ל-select() כדי לבדוק מי מהסוקטים מוכן.
+FD_ZERO(&read_fds);
+
+// מוחק את קובץ הסוקט אם הוא כבר קיים במערכת.
+// ב-UDS חובה לנקות את הקובץ הישן לפני קריאת bind(), אחרת הקריאה תיכשל עם השגיאה EADDRINUSE.
+
+::unlink(SOCKET_PATH);
 
     listener = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (listener < 0) { perror("socket"); exit(1); }

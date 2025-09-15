@@ -10,16 +10,13 @@
 #include <sstream>
 #include <cstdlib>
 #include <cstring>
-
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/time.h>
 #include <errno.h>
-
 #include "Graph.hpp"
-
 #define STDIN_FD 0
 static const char* SOCKET_PATH = "mysocket";
 static const size_t MAXDATASIZE = 1024; // גודל קריאה בכל recv
