@@ -6,20 +6,25 @@ class Graph;
 void DFS(int start_node, std::vector<bool>& visited, const Graph& graph);
 
 
-class Graph
-{
+class Graph {
     int V; // Number of vertices
-    std::vector<std::vector<int>> adj; // Adjacency list representation
+	bool directed = false; // Directed or undirected graph												  
+    std::vector<std::vector<std::pair<int, int>>> adj; // Adjacency list representation
 
     public:
 
-        Graph(int V) : V(V), adj(V) {}
+        Graph(int V, bool directed) : V(V), adj(V), directed(directed) {}
 
-        void addEdge(int u, int v)
+        void addEdge(int u, int v, int w = 0) // Add edge from u to v
             {
                 if (u < 0 || u >= V || v < 0 || v >= V)
                 {
                     std::cerr << "Error: Vertex out of bounds (addEdge)" << std::endl;
+                    return;
+                }
+				if(w < 0){
+				 
+                    std::cerr << "Error: Negative weight not allowed (addEdge)" << std::endl;
                     return;
                 }
                 if (u == v)
@@ -34,18 +39,26 @@ class Graph
                     return;
                 }
 
-                adj[u].push_back(v);
-                adj[v].push_back(u); // For undirected graph
+                adj[u].push_back({v, w}); 
+                
+                if(!directed){
+                    adj[v].push_back({u, w}); // For undirected graph
+                }
+            
             }
 
-        const std::vector<int>& getNeighbors(int v) const
+			 
+
+
+			
+        const std::vector<std::pair<int, int>>& getNeighbors(int v) const
             {
                 if(v < 0 || v >= V)
                 {
                     std::cerr << "Error: Vertex out of bounds (getNeighbros)" << std::endl;
-                    static const std::vector<int> empty; // Return an empty vector on error
+                    static const std::vector<std::pair<int, int>> empty; // Return an empty vector on error
                     return empty;
-                }
+                } 
                 return adj[v];
             }
 
@@ -54,7 +67,12 @@ class Graph
                 return V;
             }
 
-        bool isEdgeConnected(int u, int v) const
+		bool isDirected() const
+            {
+                return directed;
+            }
+
+        bool isEdgeConnected(int u, int v) const // Check if there's an edge from u to v
             {
                 if (u < 0 || u >= V || v < 0 || v >= V)
                 {
@@ -62,67 +80,127 @@ class Graph
                     return false;
                 }
 
-                for (int neighbor : adj[u])
+                for (std::pair neighbor : adj[u])
                 {
-                    if (neighbor == v)
+                    if (neighbor.first == v)
                         return true;
                 }
                 return false;
             }
+
         
         void printGraph() const
             {
                 for (int i = 0; i < V; ++i)
                 {
                     std::cout << "Vertex " << i << ":";
-                    for (int neighbor : adj[i])
+                    for (std::pair<int,int> neighbor : adj[i])
                     {
-                        std::cout << " " << neighbor;
+                        std::cout << " " << neighbor.first << "(weight " << neighbor.second << ")";
                     }
                     std::cout << std::endl;
                 }
             }
+        int degree(int v) const // For undirected graphs
+            {
+                if (v < 0 || v >= V)
+                {
+                    std::cerr << "Error: Vertex out of bounds (degree)" << std::endl;
+                    return -1;
+                }
+                if (directed)
+                {
+                    int in_deg = get_in_degree(v);
+                    int out_deg = get_out_degree(v);
+                    if (in_deg == -1 || out_deg == -1) // Error in in_degree or out_degree
+                        return -1;
+                    return in_deg + out_deg; // Total degree is sum of in-degree and out-degree
+                }
+
+                return adj[v].size(); // Degree in not directed graph is simply the size of the adjacency list
+            }
         
-        int degree(int v) const
+        int get_in_degree(int v) const
         {
             if (v < 0 || v >= V)
             {
-                std::cerr << "Error: Vertex out of bounds (degree)" << std::endl;
+                std::cerr << "Error: Vertex out of bounds (in_degree)" << std::endl;
                 return -1;
             }
-            return adj[v].size();
+
+            int in_deg = 0;
+            for (int i = 0; i < V; ++i) // Iterate through all vertices
+            {
+                for (const auto& neighbor : adj[i]) // Check their adjacency lists
+                {
+                    if (neighbor.first == v) // If there's an edge to vertex v
+                    {
+                        ++in_deg;
+                    }
+                }
+            }
+            return in_deg;
+        }
+
+        int get_out_degree(int v) const
+        {
+            if (v < 0 || v >= V)
+            {
+                std::cerr << "Error: Vertex out of bounds (out_degree)" << std::endl;
+                return -1;
+            }
+            return adj[v].size(); // Out-degree is simply the size of the adjacency list
         }
         
         bool isEulerian() const
         {
-            for (int i = 0; i < V; ++i)
+            // Find a vertex with a non-zero degree to start DFS
+            int start_node = -1;
+            for (int i = 0; i < V; ++i) {
+                if (degree(i) > 0) {
+                    start_node = i;
+                    break;
+                }
+            
+            }
+
+            // The graph has no edges, it's connected trivially
+            if (start_node == -1) {
+                return true;
+            }   
+
+            if (directed){
+                for(int j = 0; j < V; j++){
+                    if(get_in_degree(j) != get_out_degree(j)){
+                        return false;
+                    }
+                }
+            } else{
+                // For undirected graph, check if all vertices have even degree
+                for (int i = 0; i < V; ++i)
             {
                 if (degree(i) % 2 != 0) // If any vertex has an odd degree
                     return false;
             }
 
+            }
+
             std::vector<bool> visited(V, false);
-
-            // Find a vertex with a non-zero degree to start DFS
-            int start_node;
-            for (start_node = 0; start_node < V; ++start_node) {
-                if (degree(start_node) > 0) {
-                    break;
-                }
-            }
-
-            if (start_node == V) {
-                // The graph has no edges, it's connected trivially
-                return true; 
-            }
 
             // Run DFS from the first non-isolated vertex
             DFS(start_node, visited, *this);
 
             // Check if all non-isolated vertices were visited
             for (int i = 0; i < V; ++i) {
-                if (degree(i) > 0 && !visited[i]) {
-                    return false; // Found an unvisited non-isolated vertex
+                if (directed){
+                    if(get_out_degree(i) > 0 && !visited[i]){
+                        return false;
+                    }
+                } else {
+                    if (degree(i) > 0 && !visited[i]) {
+                        return false; // Found an unvisited non-isolated vertex
+                    }
+            
                 }
             }
 
@@ -136,20 +214,28 @@ class Graph
                 return;
             }
 
-            std::vector<std::vector<int>> tempAdj = adj; // Create a copy of the adjacency list
+            std::vector<std::vector<std::pair<int, int>>> tempAdj = adj; // Create a copy of the adjacency list
             std::vector<int> circuit; // To store the Eulerian circuit
             std::vector<int> stack; // Stack to hold the current path
 
-            // Start from the first vertex with edges
             int currVertex = 0;
-            for (int i = 0; i < V; ++i) {
-                if (degree(i) > 0) {
-                    currVertex = i;
-                    break;
-                }
-            }
 
-            stack.push_back(currVertex);
+            // Start from the first vertex with edges
+            for (int i = 0; i < V; ++i) {
+                    if (directed) {
+                        if (get_out_degree(i) > 0) {
+                            currVertex = i;
+                            break;
+                        }
+                    } else {
+                        if (degree(i) > 0) {
+                            currVertex = i;
+                            break;
+                        }
+                    }
+                }
+                stack.push_back(currVertex);
+
 
             while (!stack.empty()) {
                 if (tempAdj[currVertex].empty()) {
@@ -160,12 +246,18 @@ class Graph
                 } else {
                     // Otherwise, continue traversing
                     stack.push_back(currVertex);
-                    int nextVertex = tempAdj[currVertex].back();
+                    int nextVertex = tempAdj[currVertex].back().first;
                     // Remove the edge from the graph
                     tempAdj[currVertex].pop_back();
-                    auto it = std::find(tempAdj[nextVertex].begin(), tempAdj[nextVertex].end(), currVertex);
-                    if (it != tempAdj[nextVertex].end()) {
-                        tempAdj[nextVertex].erase(it);
+                    
+                    // For undirected graph, remove the reverse edge as well
+                    if (!directed) {
+                        auto it = std::find_if(tempAdj[nextVertex].begin(), tempAdj[nextVertex].end(),
+                                       [&](const auto& pair) { return pair.first == currVertex; });
+                        if (it != tempAdj[nextVertex].end()) {
+                            tempAdj[nextVertex].erase(it);
+                        }
+
                     }
                     currVertex = nextVertex;
                 }
@@ -187,10 +279,12 @@ void DFS(int start_node, std::vector<bool>& visited, const Graph& graph) {
     std::cout << start_node << " "; // Print the node
 
     // Iterate through all neighbors of the current node
-    for (int neighbor : graph.getNeighbors(start_node)) {
+    for (std::pair<int,int> neighbor : graph.getNeighbors(start_node)) {
         //  Recursively call DFS for unvisited neighbors
-        if (!visited[neighbor]) {
-            DFS(neighbor, visited, graph);
+        if (!visited[neighbor.first]) {
+            DFS(neighbor.first, visited, graph);
         }
     }
 }
+
+

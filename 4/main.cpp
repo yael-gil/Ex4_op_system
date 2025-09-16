@@ -3,57 +3,26 @@
 #include <random>
 #include <unistd.h>
 
-Graph generateRandomGraph(int V, int E, int seed) {
+Graph generateRandomGraph(int V, int E, int seed, bool directed = false) {
 
     srand(seed);
 
-    Graph g(V);
-   int count = 0;
+    Graph g(V, directed);
+   
     int edgesAdded = 0;
     while (edgesAdded < E) {
-        int u = rand() % V;
-        int v = rand() % V; //  0 to V-1
+        int u = rand() % V; // 0 to V-1
+        int v = rand() % V;
+        int w = rand() % 10 + 1; // Random weight between 1 and 10
         
         if (u != v && !g.isEdgeConnected(u, v)) { // Avoid self-loops and duplicate edges
-            g.addEdge(u, v);
+            g.addEdge(u, v, w);
             edgesAdded++;
-            count++;
-            std::cout <<"count:"<< count << std::endl;
-
-        } else {
-             std::cout << "Skipping edge (" << u << ", " << v << ") to avoid self-loop or duplicate." << std::endl;
         }
-
 
     }
     return g;
 }
-
-
-/*
-int main() {
-    
-    int num_vertices =499; // Choose a number of vertices
-    int num_edges = 124251;    // Choose a number of edges that is significantly larger than num_vertices
-    int seed = 1;           // Start with a known seed
-
-    // Loop to find an Eulerian graph
-    while (true) {
-        Graph g = generateRandomGraph(num_vertices, num_edges, seed);
-        std::cout << "seed:" << seed << std::endl;
-
-        if (g.isEulerian()) {
-            std::cout << "Found an Eulerian graph!" << std::endl;
-            std::cout << "To reproduce, use these parameters:" << std::endl;
-            std::cout << "./graph_project -v " << num_vertices << " -e " << num_edges << " -s " << seed << std::endl;
-            break; // Found a working seed, exit the loop
-        }
-        
-        seed++; // Try the next seed
-    }
-    return 0;
-} */
-
 
 int main(int argc, char *argv[]) {
     
@@ -62,8 +31,9 @@ int main(int argc, char *argv[]) {
     int E;
     int seed;
     int opt;
+    bool directed = false; // Default to not directed graph
 
-    while ((opt = getopt(argc, argv, "v:e:s:")) != -1) {
+    while ((opt = getopt(argc, argv, "v:e:s:d")) != -1) {
         switch (opt) {
             case 'v':
                 V = std::stoi(optarg);
@@ -73,6 +43,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 's':
                 seed = std::stoi(optarg);
+                break;
+            case 'd':
+                directed = true;
                 break;
             case '?':
                 if (optopt == 'v' || optopt == 'e' || optopt == 's') {
@@ -86,12 +59,27 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (E > V * (V - 1) / 2) {
-        std::cerr << "Error: Too many edges for the number of vertices." << std::endl;
+    if (V <= 0) {
+        std::cerr << "Error: Number of vertices must be positive." << std::endl;
         return 1;
     }
+    if (E < 0) {
+        std::cerr << "Error: Number of edges cannot be negative." << std::endl;
+        return 1;
+    }
+    if (directed) {
+        if (E > V * (V - 1)) {
+            std::cerr << "Error: Too many edges for the number of vertices in a directed graph." << std::endl;
+            return 1;
+        }
+    } else {
+        if (E > V * (V - 1) / 2) {
+            std::cerr << "Error: Too many edges for the number of vertices in an undirected graph." << std::endl;
+            return 1;
+        }
+    }
 
-    Graph g = generateRandomGraph(V, E, seed);
+    Graph g = generateRandomGraph(V, E, seed, directed);
     g.printGraph();
 
     if (g.isEulerian()) {
