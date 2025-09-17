@@ -1,5 +1,5 @@
 /*
-** server_uds.cpp -- UDS server with select() and Algorithm Factory
+** server.cpp -- UDS server with select() and Algorithm Factory
 ** קלט: בקשת אלגוריתם + פרמטרים (או מטריצת שכנויות)
 ** פלט: תוצאת האלגוריתם המבוקש
 */
@@ -124,20 +124,20 @@ int main() {
                 std::string response;
                 
                 if (!req.valid) {
-                    response = "ERROR: " + req.error + "\n" + 
+                    response = "ERROR: " + req.error + "\n";
                 } else {
                     // Create the requested algorithm
-                    auto algorithm = createAlgorithm(req.algorithm);
+                    auto algorithm = AlgorithmFactory::createAlgorithm(req.algorithm);
                     if (!algorithm) {
-                        response = "ERROR: Unknown algorithm '" + req.algorithm + "'\n" + 
+                        response = "ERROR: Unknown algorithm '" + req.algorithm + "'\n";
                     } else {
-                        std::printf("Running %s algorithm...\n", algorithm->getName().c_str());
-                        
                         // Execute algorithm based on request type
                         if (req.hasMatrix) {
-                            response = algorithm->execute(req.matrix);
+                            EnhancedGraph g = EnhancedGraph::fromMatrix(req.matrix);
+                            response = algorithm->run(g);
                         } else {
-                            response = algorithm->execute(req.vertices, req.edges, req.seed);
+                            EnhancedGraph g = EnhancedGraph::generateRandom(req.vertices, req.edges, req.seed);
+                            response = algorithm->run(g);
                         }
                     }
                 }

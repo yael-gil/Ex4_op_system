@@ -4,18 +4,23 @@
 
 #include <vector>
 #include <iostream>
+#include <utility> // For std::pair
+
 
 class Graph
 {
     int V; // Number of vertices
-    std::vector<std::vector<int>> adj; // Adjacency list representation
+    bool directed = false; // Directed or undirected graph												  
+    std::vector<std::vector<std::pair<int,int>>> adj; // Adjacency list representation
 
     public:
-        Graph(int V);
+        Graph(int V, bool directed);
 
-        void addEdge(int u, int v);
+        void addEdge(int u, int v, int w = 0);
 
-        const std::vector<int>& getNeighbors(int v) const;
+        const std::vector<std::pair<int, int>>& getNeighbors(int v) const;
+
+        bool isDirected() const;
 
         int getNumVertices() const;
 
@@ -24,6 +29,10 @@ class Graph
         void printGraph() const;
 
         int degree(int v) const;
+        
+        int get_in_degree(int v) const;
+    
+        int get_out_degree(int v) const;
 
         bool isEulerian() const;
 
@@ -31,37 +40,6 @@ class Graph
 
         
 };
-
-void DFS(int start_node, std::vector<bool>& visited, const Graph& graph);
-
 #endif
 
-/* bool Graph::isConnected() const {
-    int V = Graph::getNumVertices();
 
-    // Vector to track visited vertices
-    std::vector<bool> visited(V, false);
-
-    // Find a vertex with a non-zero degree to start DFS
-    int startNode = 0;
-    while (startNode < V && Graph::degree(startNode) == 0) {
-        startNode++;
-    }
-    
-    if (startNode == V) {
-        return true; // The graph has no edges, it's connected trivially
-    }
-
-    // Perform DFS from the first non-isolated vertex
-    DFS(startNode, visited, *this);
-
-    for (int i = 0; i < V; ++i) {
-        // If a vertex has a non-zero degree and wasn't visited, the graph is disconnected
-        if (degree(i) > 0 && !visited[i]) {
-            return false;
-        }
-    }
-    
-    return true; 
-}
-*/

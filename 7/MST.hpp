@@ -5,14 +5,12 @@
 #include "Graph.hpp"
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 class MST : public Algorithms {
 private:
     struct Edge {
-        int src, dest, weight;
-        
-        Edge(int s, int d, int w) : src(s), dest(d), weight(w) {}
-        
+        int u, v, weight;
         bool operator<(const Edge& other) const {
             return weight < other.weight;
         }
@@ -20,9 +18,7 @@ private:
     
     // Union-Find data structure for Kruskal's algorithm
     class UnionFind {
-    private:
         std::vector<int> parent, rank;
-        
     public:
         UnionFind(int n) : parent(n), rank(n, 0) {
             for (int i = 0; i < n; i++) {
@@ -32,43 +28,81 @@ private:
         
         int find(int x) {
             if (parent[x] != x) {
-                parent[x] = find(parent[x]); // Path compression
+                parent[x] = find(parent[x]);
             }
             return parent[x];
         }
         
         bool unite(int x, int y) {
-            int rootX = find(x);
-            int rootY = find(y);
+            int px = find(x), py = find(y);
+            if (px == py) return false;
             
-            if (rootX == rootY) return false;
-            
-            // Union by rank
-            if (rank[rootX] < rank[rootY]) {
-                parent[rootX] = rootY;
-            } else if (rank[rootX] > rank[rootY]) {
-                parent[rootY] = rootX;
+            if (rank[px] < rank[py]) {
+                parent[px] = py;
+            } else if (rank[px] > rank[py]) {
+                parent[py] = px;
             } else {
-                parent[rootY] = rootX;
-                rank[rootX]++;
+                parent[py] = px;
+                rank[px]++;
             }
             return true;
         }
     };
-    
-    // Kruskal's algorithm implementation
-    std::vector<Edge> kruskalMST(Graph& g);
-    
+
 public:
-    MST() = default;
-    ~MST() = default;
-    
-    /**
-     * @brief Calculate the Minimum Spanning Tree of the graph using Kruskal's algorithm
-     * @param g The graph
-     * @return A string containing the MST edges and total weight
-     */
-    std::string run(Graph& g) override;
+    std::string run(Graph& g) override {
+        if (g.isDirected()) {
+            return "ERROR: MST algorithm works only on undirected graphs\n";
+        }
+        
+        std::vector<Edge> edges;
+        int V = g.getNumVertices();
+        
+        // Collect all edges
+        for (int u = 0; u < V; u++) {
+            for (const auto& neighbor : g.getNeighbors(u)) {
+                int v = neighbor.first;
+                int weight = neighbor.second;
+                // Add edge only once for undirected graph
+                if (u < v) {
+                    edges.push_back({u, v, weight});
+                }
+            }
+        }
+        
+        if (edges.empty()) {
+            return "MST: No edges in graph\n";
+        }
+        
+        // Sort edges by weight
+        std::sort(edges.begin(), edges.end());
+        
+        UnionFind uf(V);
+        std::vector<Edge> mst;
+        int totalWeight = 0;
+        
+        // Kruskal's algorithm
+        for (const Edge& e : edges) {
+            if (uf.unite(e.u, e.v)) {
+                mst.push_back(e);
+                totalWeight += e.weight;
+                if (mst.size() == V - 1) break;
+            }
+        }
+        
+        std::ostringstream result;
+        if (mst.size() < V - 1) {
+            result << "MST: Graph is not connected\n";
+        } else {
+            result << "MST edges:\n";
+            for (const Edge& e : mst) {
+                result << e.u << " - " << e.v << " (weight: " << e.weight << ")\n";
+            }
+            result << "Total MST weight: " << totalWeight << "\n";
+        }
+        
+        return result.str();
+    }
 };
 
-#endif // MST_HPP
+#endif
