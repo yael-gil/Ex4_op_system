@@ -101,7 +101,7 @@ FD_ZERO(&read_fds);
                 std::printf("New client connected on socket %d\n", newfd);
 
             } else {
-                // 1) קוראים את כל הבקשה (עד EOF)
+                // 1) Receive the request from the client (stop on EOF)
                 std::string request;
                 char rbuf[4096];
                 for (;;) {
@@ -119,19 +119,51 @@ FD_ZERO(&read_fds);
                     continue;
                 }
 
-                // 2) מדפיסים את המטריצה שקיבלנו
+                // 2) Print what was received, for debugging
                 std::printf("=== Received adjacency matrix (text) ===\n%.*s\n",
                             int(request.size()), request.c_str());
+                
+                std::istringstream iss(request);        
+                std::string line;   
+                
+                //Reading the first line: number of vertices
+                int num_vertices = 0;
+                if (std::getline(iss, line)) {
+                    try {
+                        num_vertices = std::stoi(line);
+                    } catch (const std::exception& e) {
+                        // Error parsing number of vertices  
+                        std::printf("Error parsing number of vertices: %s\n", e.what());
+                        //
+                        continue;
+                    }
+                }
 
-                // 3) פרסינג טקסט -> מטריצה
+                // Reading the second line: directed or undirected
+                std::string graph_type;
+                bool is_directed = false;
+
+                if (std::getline(iss, line)) {
+                    if (line == "directed") {
+                        is_directed = true; // Directed graph
+
+                    } else if (line == "undirected") {
+                        is_directed = false;
+                    }
+                }
+
+                // 3) Read the adjacency matrix into a 2D vector
                 std::vector<std::vector<int>> adj;
                 {
-                    std::istringstream iss(request);
-                    std::string line;
+
+                    std::string line; 
+
+                    // Read each line and parse integers into the adjacency matrix
                     while (std::getline(iss, line)) {
-                        if (line.empty()) continue;
-                        std::istringstream lss(line);
-                        std::vector<int> row; int v;
+                        if (line.empty()) continue; 
+                        std::istringstream lss(line); // Line String Stream
+                        std::vector<int> row; // To hold the current row
+                        int v; // Variable to hold each integer
                         while (lss >> v) row.push_back(v);
                         if (!row.empty()) adj.push_back(row);
                     }
@@ -146,30 +178,30 @@ FD_ZERO(&read_fds);
                 if (!square) {
                     response = "EULERIAN: NO\nInvalid adjacency matrix.\n";
                 } else {
-                    // 4) בונים גרף לא-מכוון מתוך המטריצה
-                    const int n = (int)adj.size();
-                    Graph graph(n);
-                    for (int r = 0; r < n; ++r) {
-                        for (int c = r + 1; c < n; ++c) {
-                            if (adj[r][c] > 0 && !graph.isEdgeConnected(r, c)) {
-                                graph.addEdge(r, c);
+                    // 4) Build the graph from the adjacency matrix
+                
+                    Graph graph(num_vertices, is_directed);
+                    for (int r = 0; r < num_vertices; ++r) { // For each row
+                        for (int c = 0; c < num_vertices; ++c) { // For each column
+                            if (adj[r][c] > -1 && !graph.isEdgeConnected(r, c)) { // There's an edge
+                                graph.addEdge(r, c, adj[r][c]); // Add edge with weight (adj[r][c]) 
                             }
                         }
                     }
 
-                    // 5) מדפיסים את המסלול ל-ostringstream ושולחים
+                    // 5) Check if the graph is Eulerian and find the Eulerian circuit if it is
                     std::ostringstream oss;
-                    graph.findEulerCircuit(oss); // אם לא אוילרי — לא ידפיס כלום
+                    graph.findEulerCircuit(oss); // Pass the ostringstream to capture output
                     std::string printed = oss.str();
 
-                    if (!printed.empty()) {
-                        response = "EULERIAN: YES\n" + printed;
-                    } else {
+                    if (printed == "The graph is not Eulerian.\n") {
                         response = "EULERIAN: NO\n";
+                    } else {
+                        response = "EULERIAN: YES\n"  + printed;
                     }
                 }
 
-                // 6) מדפיסים את התשובה ושולחים ללקוח
+                // 6) Send the response back to the client
                 std::printf("=== Response to client ===\n%.*s",
                             int(response.size()), response.c_str());
 

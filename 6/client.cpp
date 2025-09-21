@@ -16,41 +16,60 @@
 #include <sys/un.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <utility> // For std::pair
+
+
 #include "Graph.hpp"
 #define STDIN_FD 0
 static const char* SOCKET_PATH = "mysocket";
 static const size_t MAXDATASIZE = 1024; // גודל קריאה בכל recv
 
-// ---------- יצירת גרף אקראי ----------
-static Graph generateRandomGraph(int V, int E, int seed) {
+
+//Construct a random graph with V vertices and E edges
+Graph generateRandomGraph(int V, int E, int seed, bool directed = false) {
+
     srand(seed);
-    Graph g(V);
+
+    Graph g(V, directed);
+   
     int edgesAdded = 0;
     while (edgesAdded < E) {
-        int u = rand() % V;
+        int u = rand() % V; // 0 to V-1
         int v = rand() % V;
-        if (u != v && !g.isEdgeConnected(u, v)) {
-            g.addEdge(u, v);
-            ++edgesAdded;
+        int w = rand() % 10 + 1; // Random weight between 1 and 10
+        
+        if (u != v && !g.isEdgeConnected(u, v)) { // Avoid self-loops and duplicate edges
+            g.addEdge(u, v, w);
+            edgesAdded++;
         }
-        // אם התנגשות/לולאה-עצמית, פשוט מנסים שוב
+
     }
     return g;
 }
 
-// ---------- המרת גרף למטריצת שכנויות בטקסט ----------
+// Convert graph to adjacency matrix text representation
 static std::string toAdjacencyMatrixText(const Graph& g) {
     const int V = g.getNumVertices();
-    std::vector<std::vector<int>> mat(V, std::vector<int>(V, 0));
-    for (int u = 0; u < V; ++u) {
-        for (int v : g.getNeighbors(u)) {
-            if (v >= 0 && v < V) {
-                mat[u][v] = 1;
-                mat[v][u] = 1; // לא-מכוון
+    std::vector<std::vector<int>> mat(V, std::vector<int>(V, -1));
+    //Matrix, edge from row to col
+    for (int u = 0; u < V; ++u) { //Row
+        for (std::pair<int,int> v : g.getNeighbors(u)) { //Col
+            if (v.first >= 0 && v.first < V) {
+                
+                mat[u][v.first] = v.second; //Mark the edge in the matrix (u -> v), weight = v.second
+
+                //For undirected graph, mark the reverse edge too (v -> u), weight = v.second
+                if(!g.isDirected()){
+                    mat[v.first][u] = v.second;
+                } 
             }
         }
     }
+
+    //Convert matrix to string
     std::ostringstream out;
+    out<< V << '\n'; //First line is number of vertices
+    out << (g.isDirected() ? "directed" : "undirected") << '\n'; //Second line is directed or not
     for (int i = 0; i < V; ++i) {
         for (int j = 0; j < V; ++j) {
             out << mat[i][j];
@@ -77,32 +96,64 @@ static bool send_all(int fd, const char* buf, size_t len) {
 }
 
 int main(int argc, char* argv[]) {
-    // פרמטרים: -v <vertices> -e <edges> -s <seed>
-    int V = 0, E = 0, seed = 0, opt;
-    while ((opt = ::getopt(argc, argv, "v:e:s:")) != -1) {
+ 
+    
+    int V;
+    int E;
+    int seed;
+    int opt;
+    bool directed = false; // Default to not directed graph
+
+    while ((opt = getopt(argc, argv, "v:e:s:d")) != -1) {
         switch (opt) {
-            case 'v': V = std::stoi(optarg); break;
-            case 'e': E = std::stoi(optarg); break;
-            case 's': seed = std::stoi(optarg); break;
+            case 'v':
+                V = std::stoi(optarg);
+                break;
+            case 'e':
+                E = std::stoi(optarg);
+                break;
+            case 's':
+                seed = std::stoi(optarg);
+                break;
+            case 'd':
+                directed = true;
+                break;
             case '?':
-                std::cerr << "Usage: " << argv[0] << " -v <vertices> -e <edges> -s <seed>\n";
+                if (optopt == 'v' || optopt == 'e' || optopt == 's') {
+                    std::cerr << "Option -" << static_cast<char>(optopt) << " requires an argument." << std::endl;
+                } else {
+                    std::cerr << "Unknown option `-" << static_cast<char>(optopt) << "`." << std::endl;
+                }
                 return 1;
             default:
-                return 1;
+                abort(); // Stop the program on unexpected errors
         }
     }
 
     if (V <= 0) {
-        std::cerr << "Error: V must be positive.\n";
+        std::cerr << "Error: Number of vertices must be positive." << std::endl;
         return 1;
     }
-    if (E < 0 || E > V * (V - 1) / 2) {
-        std::cerr << "Error: Too many edges for the number of vertices.\n";
+    if (E < 0) {
+        std::cerr << "Error: Number of edges cannot be negative." << std::endl;
         return 1;
+    }
+    if (directed) {
+        if (E > V * (V - 1)) {
+            std::cerr << "Error: Too many edges for the number of vertices in a directed graph." << std::endl;
+            return 1;
+        }
+    } else {
+        if (E > V * (V - 1) / 2) {
+            std::cerr << "Error: Too many edges for the number of vertices in an undirected graph." << std::endl;
+            return 1;
+        }
     }
 
-    // בניית הגרף והמרתו למטריצה טקסטואלית
-    Graph g = generateRandomGraph(V, E, seed);
+    // Generate the random graph
+    Graph g = generateRandomGraph(V, E, seed, directed);
+
+    // Convert to adjacency matrix text
     std::string matrixText = toAdjacencyMatrixText(g);
 
     // חיבור ל-UDS
@@ -120,8 +171,8 @@ int main(int argc, char* argv[]) {
     }
 
     // מדפיסים מה נשלח
-    std::cout << "=== Sending adjacency matrix to server ===\n"
-              << matrixText << std::flush;
+    std::cout << "=== Sending adjacency matrix to server ===\n";
+             // << matrixText << std::flush;
 
     // שולחים את המטריצה
     if (!send_all(sockfd, matrixText.c_str(), matrixText.size())) {
