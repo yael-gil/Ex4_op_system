@@ -38,6 +38,8 @@ class Graph
 
         void findEulerCircuit();
 
+        Graph generateRandomGraph(int V, int E, int seed, bool directed = false);
+
         
 };
 #endif

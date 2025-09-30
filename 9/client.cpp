@@ -96,7 +96,7 @@ int send_request_and_receive_response(const std::string& request) {
         FD_SET(sockfd, &readfds);
         
         struct timeval tv;
-        tv.tv_sec = 10; // טייםאאוט של 10 שניות
+        tv.tv_sec = 60; // טייםאאוט של 100 שניות
         tv.tv_usec = 0;
         
         int rc = ::select(sockfd + 1, &readfds, nullptr, nullptr, &tv);

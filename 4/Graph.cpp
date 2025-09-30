@@ -279,6 +279,28 @@ void DFS(int start_node, std::vector<bool>& visited, const Graph& graph) {
             DFS(neighbor.first, visited, graph);
         }
     }
+
+}
+
+Graph Graph::generateRandomGraph(int V, int E, int seed, bool directed = false) {
+
+    srand(seed);
+
+    Graph g(V, directed);
+   
+    int edgesAdded = 0;
+    while (edgesAdded < E) {
+        int u = rand() % V; // 0 to V-1
+        int v = rand() % V;
+        int w = rand() % 10 + 1; // Random weight between 1 and 10
+        
+        if (u != v && !g.isEdgeConnected(u, v)) { // Avoid self-loops and duplicate edges
+            g.addEdge(u, v, w);
+            edgesAdded++;
+        }
+
+    }
+    return g;
 }
 
 
